@@ -1,0 +1,11 @@
+{
+  "name": "sumad-traffic-mgt",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "db:push": "cd server && npx prisma db push",
+    "db:seed": "cd server && npm run db:seed"
+  }
+}

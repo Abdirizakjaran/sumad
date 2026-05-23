@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TRAFFIC_ADMIN
+  TRAFFIC_OFFICER
+  FINANCE_OFFICER
+  CAMERA_OPERATOR
+}
+
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+  TRUCK
+  BUS
+}
+
+enum VehicleStatus {
+  PENDING
+  CLEARED
+  BLOCKED
+}
+
+enum FineStatus {
+  PENDING
+  PAID
+  APPROVED
+}
+
+enum ViolationType {
+  OVER_SPEEDING
+  WRONG_PARKING
+  DANGEROUS_DRIVING
+  RED_LIGHT_VIOLATION
+  NO_HELMET
+  ILLEGAL_PARKING
+}
+
+enum PaymentMethod {
+  EVC_PLUS
+  WAAFI_PAY
+  SAHAL
+  CASH
+}
+
+enum DetectionResult {
+  APPROVED
+  UNPAID
+  NOT_FOUND
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  fullName      String
+  phone         String?
+  role          UserRole  @default(TRAFFIC_OFFICER)
+  isActive      Boolean   @default(true)
+  resetToken    String?
+  resetExpires  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  finesCreated    Fine[]            @relation("FineCreatedBy")
+  paymentsCreated Payment[]         @relation("PaymentCreatedBy")
+  detections      CameraDetection[]
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+}
+
+model Vehicle {
+  id               String        @id @default(cuid())
+  ownerFullName    String
+  phoneNumber      String
+  nationalId       String
+  vehicleType      VehicleType
+  plateNumber      String        @unique
+  vehicleModel     String
+  vehicleColor     String
+  registrationDate DateTime      @default(now())
+  vehicleImage     String?
+  driverImage      String?
+  status           VehicleStatus @default(PENDING)
+  qrCode           String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  fines      Fine[]
+  detections CameraDetection[]
+}
+
+model Fine {
+  id            String        @id @default(cuid())
+  vehicleId     String
+  vehicle       Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  violationType ViolationType
+  description   String?
+  amount        Float
+  dueDate       DateTime
+  status        FineStatus    @default(PENDING)
+  evidenceImage String?
+  createdById   String
+  createdBy     User          @relation("FineCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  payment Payment?
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  fineId        String        @unique
+  fine          Fine          @relation(fields: [fineId], references: [id], onDelete: Cascade)
+  amount        Float
+  method        PaymentMethod
+  transactionId String?
+  receiptNumber String        @unique
+  approvedAt    DateTime      @default(now())
+  createdById   String
+  createdBy     User          @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now())
+}
+
+model CameraDetection {
+  id          String           @id @default(cuid())
+  plateNumber String
+  result      DetectionResult
+  vehicleId   String?
+  vehicle     Vehicle?         @relation(fields: [vehicleId], references: [id])
+  snapshot    String?
+  metadata    Json?
+  operatorId  String?
+  operator    User?            @relation(fields: [operatorId], references: [id])
+  createdAt   DateTime         @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
